@@ -1,3 +1,4 @@
+import hmac
 import os
 
 from flask import Flask, jsonify, request
@@ -12,7 +13,7 @@ API_KEY = os.environ.get("SQUARE_API_KEY") or None
 def square_number():
     if API_KEY is not None:
         api_key = request.headers.get("X-API-Key")
-        if api_key != API_KEY:
+        if api_key is None or not hmac.compare_digest(api_key, API_KEY):
             return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
@@ -34,4 +35,10 @@ def health_check():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Dev server only. Never enable the Werkzeug debugger on a public interface:
+    # it allows arbitrary code execution. Opt in with FLASK_DEBUG=1 / FLASK_HOST.
+    app.run(
+        debug=os.environ.get("FLASK_DEBUG") == "1",
+        host=os.environ.get("FLASK_HOST", "127.0.0.1"),
+        port=int(os.environ.get("FLASK_PORT", "5000")),
+    )
